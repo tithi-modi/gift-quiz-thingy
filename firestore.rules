@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner() { return request.auth != null; }
+    match /items/{id}    { allow read: if true; allow write: if owner(); }
+    match /cfg/{id}      { allow read: if true; allow write: if owner(); }
+    match /res/{id}      { allow read, create, delete: if true; }
+    match /attempts/{id} { allow create: if true; allow read, update, delete: if owner(); }
+    match /alerts/{id}   { allow create: if true; allow read, delete: if owner(); }
+  }
+}
