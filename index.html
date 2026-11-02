@@ -64,7 +64,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const OCC=['Birthday','Christmas/New Years','There is no special reason, I just think Tithi is iconic','Diwali','Tithi has made some major accomplishment (social, cultural, academic, career)','Rakshabandhan'];
 const CLO=['Best Friend','Immediate Family/Mama or Maasi or 1st cousin/Kaku, Kaki or Dhyana','Close friend/friend/dad or moms friend','Family (2nd cousin onwards)','Acquaintance/collegue/classmate/peer'];
-const TIER=[['u500','Under 500'],['500-1000','500 to 1000'],['1-5k','1000 to 5000'],['u10k','Under 10,000'],['gen',"I'm feeling generous, surprise me"]];
+const TIER=[['u500','Under 500'],['500-1000','500-1000'],['1-5k','1000-5000'],['5-10k','5000-10000'],['gen',"I'm feeling generous"]];
 const CATS0=['Jewellery','Beauty','Fashion','Books','Tech','Home Decor','Food','Experience'];
 // sky
 (function(){let h='';for(let i=0;i<90;i++){const s=Math.random()*2.5+1;h+=`<i class="st" style="left:${Math.random()*100}%;top:${Math.random()*85}%;width:${s}px;height:${s}px;animation-delay:${Math.random()*3}s"></i>`}
@@ -89,9 +89,10 @@ const avail=()=>items.filter(i=>i.status!=='wishlist'&&(!shield||!resIds().has(i
 // ---------- QUIZ ----------
 let Q={step:'name',name:'',occ:null,clo:null,bud:null,mine:new Set(),outcome:null};
 function match(){const rs=resIds();let l=items.filter(i=>i.status!=='wishlist'&&!(shield&&rs.has(i.id)));
- if(Q.clo===3)return l.filter(i=>i.price!=null&&i.price!==''?+i.price<1500:(i.tiers||[]).some(t=>t==='u500'||t==='500-1000'));
- const bi=TIER.findIndex(t=>t[0]===Q.bud);
- return l.filter(i=>(!(i.occasions||[]).length||i.occasions.includes(Q.occ))&&(!(i.closeness||[]).length||i.closeness.includes(Q.clo))&&(Q.bud==='gen'||(i.tiers||[]).some(t=>TIER.findIndex(x=>x[0]===t)<=bi)))}
+ const ok=i=>i.price!=null&&i.price!==''&&!isNaN(+i.price);
+ if(Q.clo===3)return l.filter(i=>ok(i)&&+i.price<1500);
+ return l.filter(i=>ok(i)&&band(i.price)===Q.bud&&(!(i.occasions||[]).length||i.occasions.includes(Q.occ))&&(!(i.closeness||[]).length||i.closeness.includes(Q.clo)))}
+function band(p){p=+p;return p<500?'u500':p<=1000?'500-1000':p<=5000?'1-5k':p<=10000?'5-10k':'gen'}
 function frame(h){app.innerHTML=`<div class="card enter" id="step">${h}</div>`}
 function quiz(){
  if(Q.step==='name')return frame(`<div class="hero"><div class="float" style="font-size:3rem">🏰✨</div><h1>Tithi's gift Quiz</h1></div><p>This way, you dont have to do research or gift-hunting and she gets what she wants, both parties are happier!</p><input type="text" id="nm" placeholder="Enter your real name" maxlength="60"><button class="go" id="start">Start Quiz</button> <button id="own">🔮 Owner dashboard</button>`),$('own').onclick=()=>{Q.step='pw';render()},
@@ -140,9 +141,9 @@ async function owner(){
  <div class="stats enter"><div class="card stat"><b>${stock.length}</b>Total items</div><div class="card stat"><b>${rs.size}</b>Reserved</div><div class="card stat"><b>${wish.length}</b>Wishlist</div></div>
  <div class="card enter row"><div><b>🛡️ Surprise Shield</b><div class="small">${shield?'ON — reserved gifts vanish from the quiz so no one sees what others picked.':'OFF — reserved gifts stay visible in the quiz.'}</div></div><button class="sw ${shield?'on':''}" id="shield" aria-label="Surprise shield"></button></div>
  <div class="card enter alert"><b>🔔 Restock alerts (${alerts.length})</b>${alerts.length?alerts.sort((a,b)=>b.ts-a.ts).map(a=>`<div class="row" style="margin-top:8px"><span>${a.kind==='category'?`No gifts left in <b>${esc(a.cat)}</b> after ${esc(a.who)} reserved “${esc(a.item)}”`:`${esc(a.who)} chose <b>${esc(a.occ)}</b> · ${esc(a.clo)} · ${esc(a.bud)} — nothing matched`}</span><button data-d="${a.id}">Dismiss</button></div>`).join(''):'<p class="small">All stocked. ✨</p>'}</div>
- <div class="card enter"><h2>➕ Add new item</h2><input type="text" id="fn" placeholder="Product name (optional)" value="${esc(F.name)}"><input type="number" id="fp" placeholder="Price in ₹ (optional)" value="${esc(F.price)}"><input type="text" id="fl" placeholder="Product link (optional)" value="${esc(F.link)}"><textarea id="fd" rows="3" placeholder="Description / note from me (optional)" style="width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--ink);font:inherit;margin:6px 0">${esc(F.desc)}</textarea>
+ <div class="card enter"><h2>➕ Add new item</h2><input type="text" id="fn" placeholder="Product name (optional)" value="${esc(F.name)}"><input type="number" id="fp" placeholder="Price in ₹ (required, decides which budget option shows it)" value="${esc(F.price)}"><input type="text" id="fl" placeholder="Product link (optional)" value="${esc(F.link)}"><textarea id="fd" rows="3" placeholder="Description / note from me (optional)" style="width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--ink);font:inherit;margin:6px 0">${esc(F.desc)}</textarea>
  <p class="small">Category (pick several)</p>${cats.map(c=>`<span class="chip ${F.cats.has(c)?'on':''}" data-s="cats" data-v="${esc(c)}">${esc(c)}</span>`).join('')}<input type="text" id="fc" placeholder="New category + Enter">
- <p class="small">Budget tier</p>${chips(TIER.slice(0,4),'tiers')}<p class="small">Occasion</p>${chips(OCC.map(o=>[o,o]),'occ')}<p class="small">Closeness</p>${chips(CLO.map((c,i)=>[i,c]),'clo')}
+ <p class="small">Occasion</p>${chips(OCC.map(o=>[o,o]),'occ')}<p class="small">Closeness</p>${chips(CLO.map((c,i)=>[i,c]),'clo')}
  <p class="small">Images (optional)</p>${F.img?`<img class="thumb" src="${esc(F.img)}" alt=""> `:''}<input type="file" id="ff" accept="image/*">
  <p><label><input type="checkbox" id="fw" ${F.wish?'checked':''}> Wishlist only (not offered in quiz yet)</label></p><button class="go" id="add">Add item</button></div>
  <div class="card enter"><h2>🎁 In stock</h2>${stock.map(itemRow(rs)).join('')||'<p class="small">Nothing yet.</p>'}</div>
@@ -160,7 +161,7 @@ function wire(){
  document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const i=items.find(x=>x.id===b.dataset.t);db.doc('items/'+i.id).update({status:i.status==='wishlist'?'stock':'wishlist'})});
  $('fc').onkeydown=e=>{if(e.key==='Enter'&&e.target.value.trim()){keep();const v=e.target.value.trim();F.custom.push(v);F.cats.add(v);render()}};
  if($('ff'))$('ff').onchange=async e=>{keep();const f=e.target.files[0];if(!f)return;try{F.img=await shrink(f)}catch(x){alert('Upload failed')}render()};
- $('add').onclick=async()=>{keep();if(!F.name&&!F.cats.size&&!F.img){alert('Add at least a name, category or image.');return}
+ $('add').onclick=async()=>{keep();if(!F.name&&!F.cats.size&&!F.img){alert('Add at least a name, category or image.');return}if(!(+F.price>0)){alert('Please enter the price in ₹.');return}
   await db.doc('items/'+uid()).set({name:F.name||'Untitled gift',price:F.price,link:F.link,desc:F.desc,categories:[...F.cats],tiers:[...F.tiers],occasions:[...F.occ],closeness:[...F.clo],image:F.img,status:F.wish?'wishlist':'stock',ts:Date.now()});F=fresh();render()}}
 function keep(){if(!F||!$('fn'))return;F.name=$('fn').value;F.price=$('fp').value;F.link=$('fl').value;F.desc=$('fd').value;F.wish=$('fw').checked}
 function render(){if(!ready)return;if(isOwnerView())owner();else quiz()}
